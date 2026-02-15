@@ -1,0 +1,830 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VG_SCORE - Dashboard Profissional</title>
+    
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-database.js"></script>
+    
+    <!-- React e Deps -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; }
+        
+        .gradient-bg { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+        .card-hover { transition: all 0.3s ease; }
+        .card-hover:hover { transform: translateY(-4px); box-shadow: 0 20px 40px rgba(0,0,0,0.15); }
+        
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 0.85em;
+            font-weight: 600;
+        }
+        
+        .status-win { background: rgba(34, 197, 94, 0.15); color: #22c55e; }
+        .status-loss { background: rgba(239, 68, 68, 0.15); color: #ef4444; }
+        .status-pending { background: rgba(249, 115, 22, 0.15); color: #f97316; }
+        
+        .category-badge {
+            display: inline-block;
+            padding: 8px 14px;
+            border-radius: 6px;
+            font-size: 0.75em;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .category-alavancagem { background: rgba(34, 197, 94, 0.15); color: #16a34a; border: 1px solid rgba(34, 197, 94, 0.3); }
+        .category-baixo { background: rgba(59, 130, 246, 0.15); color: #1d4ed8; border: 1px solid rgba(59, 130, 246, 0.3); }
+        .category-medio { background: rgba(249, 115, 22, 0.15); color: #b45309; border: 1px solid rgba(249, 115, 22, 0.3); }
+        .category-alto { background: rgba(239, 68, 68, 0.15); color: #dc2626; border: 1px solid rgba(239, 68, 68, 0.3); }
+        
+        .metric-card { 
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 12px;
+            padding: 24px;
+            color: white;
+            text-align: center;
+        }
+        
+        .metric-value { font-size: 2.5em; font-weight: 700; margin: 12px 0; }
+        .metric-label { font-size: 0.9em; opacity: 0.95; }
+        .metric-subtitle { font-size: 0.8em; opacity: 0.8; margin-top: 8px; }
+        
+        .tab-button {
+            flex: 1;
+            padding: 16px;
+            border: none;
+            background: none;
+            cursor: pointer;
+            font-weight: 600;
+            border-bottom: 3px solid transparent;
+            transition: all 0.3s;
+            color: #666;
+        }
+        
+        .tab-button.active {
+            color: white;
+            background: #667eea;
+            border-bottom-color: #764ba2;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+        
+        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(102, 126, 234, 0.3); }
+        
+        .btn-secondary {
+            background: #e5e7eb;
+            color: #374151;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+        
+        .btn-secondary:hover { background: #d1d5db; }
+        
+        .btn-superbet {
+            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+            color: white;
+            padding: 12px 20px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s;
+            flex: 1;
+        }
+        
+        .btn-superbet:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(239, 68, 68, 0.3); }
+        
+        .input-field {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #e5e7eb;
+            border-radius: 6px;
+            font-family: inherit;
+            font-size: 0.95em;
+            transition: all 0.3s;
+        }
+        
+        .input-field:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .market-tag {
+            display: inline-block;
+            background: #f3f4f6;
+            color: #374151;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 0.75em;
+            font-weight: 600;
+            margin-right: 6px;
+            margin-bottom: 6px;
+        }
+
+        .sync-indicator {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 12px;
+            background: rgba(34, 197, 94, 0.15);
+            color: #16a34a;
+            border-radius: 20px;
+            font-size: 0.85em;
+            font-weight: 600;
+        }
+
+        .sync-indicator.loading {
+            background: rgba(59, 130, 246, 0.15);
+            color: #1d4ed8;
+        }
+
+        .pulse {
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        
+        @media (max-width: 768px) {
+            .metric-value { font-size: 2em; }
+            .tab-button { font-size: 0.9em; padding: 12px; }
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <div id="root"></div>
+    
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+        
+        // Firebase Config
+        const firebaseConfig = {
+            apiKey: "AIzaSyDKL_placeholder_you_will_set_this",
+            authDomain: "vg-score-dashboard.firebaseapp.com",
+            projectId: "vg-score-dashboard",
+            databaseURL: "https://vg-score-dashboard-default-rtdb.firebaseio.com",
+            storageBucket: "vg-score-dashboard.appspot.com",
+            messagingSenderId: "placeholder",
+            appId: "placeholder"
+        };
+
+        // Initialize Firebase (será configurado com credenciais reais)
+        let db = null;
+        let firebaseReady = false;
+
+        try {
+            const app = firebase.initializeApp(firebaseConfig);
+            db = firebase.database(app);
+            firebaseReady = true;
+            console.log('Firebase conectado com sucesso!');
+        } catch (error) {
+            console.log('Firebase não configurado - usando localStorage apenas:', error);
+            firebaseReady = false;
+        }
+
+        const VGScoreDashboard = () => {
+            const [activeTab, setActiveTab] = useState('recomendacoes');
+            const [results, setResults] = useState({});
+            const [recommendations, setRecommendations] = useState([]);
+            const [editingId, setEditingId] = useState(null);
+            const [formData, setFormData] = useState({});
+            const [isSyncing, setIsSyncing] = useState(false);
+            const [lastSync, setLastSync] = useState(null);
+
+            // Recomendações padrão
+            const defaultRecommendations = [
+                {
+                    id: 1,
+                    jogo: "Palmeiras x Guarani",
+                    data: "15/02/2026",
+                    horario: "20h30",
+                    tipo: "Vitória Palmeiras",
+                    odds: 1.37,
+                    categoria: "alavancagem",
+                    mercado: "Resultado Final",
+                    justification: "Palmeiras favorito em casa. Guarani em fase delicada. Superioridade técnica clara."
+                },
+                {
+                    id: 2,
+                    jogo: "Santos x Velo Clube",
+                    data: "15/02/2026",
+                    horario: "20h30",
+                    tipo: "Vitória Santos",
+                    odds: 1.22,
+                    categoria: "alavancagem",
+                    mercado: "Resultado Final",
+                    justification: "Santos favorito em casa. Velo em zona de rebaixamento. Diferença técnica clara."
+                },
+                {
+                    id: 3,
+                    jogo: "São Bernardo x Corinthians",
+                    data: "15/02/2026",
+                    horario: "20h30",
+                    tipo: "Vitória Corinthians",
+                    odds: 1.97,
+                    categoria: "baixo",
+                    mercado: "Resultado Final",
+                    justification: "Corinthians favorito. Elenco superior. Menos de 2.5 gols esperado (jogo travado)."
+                },
+                {
+                    id: 4,
+                    jogo: "Bragantino x Novorizontino",
+                    data: "15/02/2026",
+                    horario: "20h30",
+                    tipo: "Ambos Marcam",
+                    odds: 1.56,
+                    categoria: "baixo",
+                    mercado: "Ambos Marcam",
+                    justification: "Ambos times ofensivos. Defesas vulneráveis. Padrão de jogos com gols em ambos lados."
+                },
+                {
+                    id: 5,
+                    jogo: "Ponte Preta x São Paulo",
+                    data: "15/02/2026",
+                    horario: "20h30",
+                    tipo: "Vitória São Paulo",
+                    odds: 1.35,
+                    categoria: "alavancagem",
+                    mercado: "Resultado Final",
+                    justification: "São Paulo em melhor momento. Ponte em campeonato irregular. Favorito técnico."
+                },
+                {
+                    id: 6,
+                    jogo: "Botafogo-SP x Capivariano",
+                    data: "15/02/2026",
+                    horario: "20h30",
+                    tipo: "Vitória Botafogo",
+                    odds: 1.40,
+                    categoria: "alavancagem",
+                    mercado: "Resultado Final",
+                    justification: "Botafogo melhor campanha. Capivariano time pequeno. Diferença clara."
+                },
+                {
+                    id: 7,
+                    jogo: "Mirassol x Portuguesa",
+                    data: "15/02/2026",
+                    horario: "20h30",
+                    tipo: "Vitória Mirassol",
+                    odds: 1.55,
+                    categoria: "baixo",
+                    mercado: "Resultado Final",
+                    justification: "Mirassol em melhor posição. Portuguesa em campeonato irregular. Favorito definido."
+                },
+                {
+                    id: 8,
+                    jogo: "Palmeiras x Guarani - Menos de 2.5 Gols",
+                    data: "15/02/2026",
+                    horario: "20h30",
+                    tipo: "Criar Aposta: Vitória Palmeiras + Menos de 2.5 Gols",
+                    odds: 1.75,
+                    categoria: "medio",
+                    mercado: "Múltiplos Mercados",
+                    justification: "Combinada com Bet Builder: Palmeiras vencer + jogo com poucas finalizações."
+                },
+                {
+                    id: 9,
+                    jogo: "Corinthians - Memphis/Yuri Marca",
+                    data: "15/02/2026",
+                    horario: "20h30",
+                    tipo: "Criar Aposta: Vitória Corinthians + Jogador Marca",
+                    odds: 2.15,
+                    categoria: "medio",
+                    mercado: "Múltiplos Mercados",
+                    justification: "Bet Builder: Corinthians vencer + um dos atacantes marcar. Ambos em boa forma."
+                },
+                {
+                    id: 10,
+                    jogo: "Santos - Menos Gols + Vitória",
+                    data: "15/02/2026",
+                    horario: "20h30",
+                    tipo: "Criar Aposta: Vitória Santos + Menos de 2.5 Gols",
+                    odds: 1.68,
+                    categoria: "medio",
+                    mercado: "Múltiplos Mercados",
+                    justification: "Bet Builder: Santos vencer + jogo com poucas finalizações esperadas."
+                }
+            ];
+
+            // Inicializar dados
+            useEffect(() => {
+                setRecommendations(defaultRecommendations);
+                loadResults();
+            }, []);
+
+            // Carregar resultados do Firebase ou localStorage
+            const loadResults = async () => {
+                try {
+                    if (firebaseReady && db) {
+                        setIsSyncing(true);
+                        const snapshot = await db.ref('results').get();
+                        if (snapshot.exists()) {
+                            setResults(snapshot.val());
+                            console.log('Resultados carregados do Firebase');
+                        } else {
+                            // Tentar localStorage como fallback
+                            const saved = localStorage.getItem('vg_results');
+                            if (saved) {
+                                setResults(JSON.parse(saved));
+                            }
+                        }
+                        setLastSync(new Date());
+                        setIsSyncing(false);
+                    } else {
+                        // Sem Firebase, usar localStorage
+                        const saved = localStorage.getItem('vg_results');
+                        if (saved) {
+                            setResults(JSON.parse(saved));
+                        }
+                    }
+                } catch (error) {
+                    console.error('Erro ao carregar resultados:', error);
+                    // Fallback para localStorage
+                    const saved = localStorage.getItem('vg_results');
+                    if (saved) {
+                        setResults(JSON.parse(saved));
+                    }
+                    setIsSyncing(false);
+                }
+            };
+
+            // Escutar atualizações em tempo real
+            useEffect(() => {
+                if (!firebaseReady || !db) return;
+
+                const unsubscribe = db.ref('results').on('value', (snapshot) => {
+                    if (snapshot.exists()) {
+                        setResults(snapshot.val());
+                        setLastSync(new Date());
+                    }
+                });
+
+                return () => unsubscribe();
+            }, []);
+
+            // Salvar resultado
+            const saveResult = async (id) => {
+                const newData = {
+                    ...results,
+                    [id]: formData[id]
+                };
+
+                setResults(newData);
+                localStorage.setItem('vg_results', JSON.stringify(newData));
+
+                if (firebaseReady && db) {
+                    try {
+                        setIsSyncing(true);
+                        await db.ref(`results/${id}`).set(formData[id]);
+                        console.log(`Resultado ${id} salvo no Firebase`);
+                        setLastSync(new Date());
+                    } catch (error) {
+                        console.error('Erro ao sincronizar com Firebase:', error);
+                    } finally {
+                        setIsSyncing(false);
+                    }
+                }
+
+                setEditingId(null);
+            };
+
+            const handleFormChange = (id, field, value) => {
+                setFormData(prev => ({
+                    ...prev,
+                    [id]: {
+                        ...prev[id],
+                        [field]: value
+                    }
+                }));
+            };
+
+            const stats = {
+                total: recommendations.length,
+                completados: Object.keys(results).length,
+                acertos: Object.values(results).filter(r => r?.resultado === 'win').length
+            };
+
+            const taxa_acerto = stats.completados > 0 ? Math.round((stats.acertos / stats.completados) * 100) : 0;
+
+            const getCategoryLabel = (cat) => {
+                if (cat === 'alavancagem') return '🚀 Alavancagem (≤1.35)';
+                if (cat === 'baixo') return '🟢 Risco Baixo (1.35-1.70)';
+                if (cat === 'medio') return '🟡 Risco Médio (1.70-2.5)';
+                return '🔴 Risco Alto (>2.5)';
+            };
+
+            const getStatusColor = (status) => {
+                if (status === 'win') return '🟢 ACERTOU';
+                if (status === 'loss') return '🔴 ERROU';
+                return '⏳ PENDENTE';
+            };
+
+            const RecommendationCard = ({ rec, showForm = false }) => {
+                const result = results[rec.id];
+
+                return (
+                    <div className="bg-white rounded-lg border border-gray-200 overflow-hidden card-hover">
+                        <div className="gradient-bg text-white p-4">
+                            <h3 className="text-lg font-bold">{rec.jogo}</h3>
+                            <p className="text-sm opacity-90">{rec.data} às {rec.horario}</p>
+                        </div>
+
+                        <div className="p-4 space-y-4">
+                            <div className="flex gap-2 flex-wrap">
+                                <span className={`category-badge category-${rec.categoria}`}>
+                                    {getCategoryLabel(rec.categoria)}
+                                </span>
+                                {result && (
+                                    <span className={`status-badge status-${result.resultado}`}>
+                                        {getStatusColor(result.resultado)}
+                                    </span>
+                                )}
+                            </div>
+
+                            <div className="space-y-2 text-sm">
+                                <div>
+                                    <span className="market-tag">📊 {rec.mercado}</span>
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-3 text-sm">
+                                <div className="bg-gray-50 p-3 rounded">
+                                    <div className="text-gray-600 font-medium">Apostando em</div>
+                                    <div className="text-gray-900 font-semibold">{rec.tipo}</div>
+                                </div>
+                                <div className="bg-gray-50 p-3 rounded">
+                                    <div className="text-gray-600 font-medium">Odd Superbet</div>
+                                    <div className="text-gray-900 font-semibold">{rec.odds}</div>
+                                </div>
+                            </div>
+
+                            <div className="bg-blue-50 border-l-4 border-blue-400 p-3 rounded text-sm text-gray-700">
+                                <strong>📝 Análise:</strong> {rec.justification}
+                            </div>
+
+                            <div className="bg-amber-50 border-l-4 border-amber-400 p-3 rounded text-sm text-amber-800">
+                                <strong>💡 Dica:</strong> Use a função "Criar Aposta" (Bet Builder) para combinar este mercado com outros do mesmo jogo.
+                            </div>
+
+                            {result && (
+                                <div className="bg-green-50 p-3 rounded text-sm space-y-2">
+                                    <div><strong>Placar:</strong> {result.placar}</div>
+                                    <div><strong>Lucro/Perda:</strong> <span className={result.resultado === 'win' ? 'text-green-600 font-bold' : 'text-red-600 font-bold'}>
+                                        {result.resultado === 'win' ? '+' : '-'}R$ {result.lucro}
+                                    </span></div>
+                                    {result.observacoes && <div><strong>Obs:</strong> {result.observacoes}</div>}
+                                </div>
+                            )}
+
+                            {showForm && editingId === rec.id && (
+                                <div className="bg-gray-50 p-4 rounded space-y-3 border-l-4 border-blue-400">
+                                    <div>
+                                        <label className="block text-sm font-semibold mb-2">Resultado</label>
+                                        <select
+                                            className="input-field"
+                                            value={formData[rec.id]?.resultado || ''}
+                                            onChange={(e) => handleFormChange(rec.id, 'resultado', e.target.value)}
+                                        >
+                                            <option value="">Selecione...</option>
+                                            <option value="win">✅ ACERTOU</option>
+                                            <option value="loss">❌ ERROU</option>
+                                            <option value="pending">⏳ PENDENTE</option>
+                                        </select>
+                                    </div>
+
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <div>
+                                            <label className="block text-sm font-semibold mb-2">Placar</label>
+                                            <input
+                                                type="text"
+                                                className="input-field"
+                                                placeholder="Ex: 2x1"
+                                                value={formData[rec.id]?.placar || ''}
+                                                onChange={(e) => handleFormChange(rec.id, 'placar', e.target.value)}
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-semibold mb-2">Lucro/Perda (R$)</label>
+                                            <input
+                                                type="number"
+                                                className="input-field"
+                                                placeholder="0"
+                                                value={formData[rec.id]?.lucro || ''}
+                                                onChange={(e) => handleFormChange(rec.id, 'lucro', e.target.value)}
+                                            />
+                                        </div>
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-sm font-semibold mb-2">Observações</label>
+                                        <input
+                                            type="text"
+                                            className="input-field"
+                                            placeholder="Algo a notar..."
+                                            value={formData[rec.id]?.observacoes || ''}
+                                            onChange={(e) => handleFormChange(rec.id, 'observacoes', e.target.value)}
+                                        />
+                                    </div>
+
+                                    <div className="flex gap-2">
+                                        <button
+                                            className="btn-primary flex-1"
+                                            onClick={() => saveResult(rec.id)}
+                                            disabled={isSyncing}
+                                        >
+                                            {isSyncing ? '⏳ Salvando...' : '💾 Salvar'}
+                                        </button>
+                                        <button
+                                            className="btn-secondary flex-1"
+                                            onClick={() => setEditingId(null)}
+                                        >
+                                            Cancelar
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
+
+                            {showForm && editingId !== rec.id && !result && (
+                                <button
+                                    className="btn-primary w-full"
+                                    onClick={() => {
+                                        setEditingId(rec.id);
+                                        setFormData(prev => ({
+                                            ...prev,
+                                            [rec.id]: { resultado: '', placar: '', lucro: '', observacoes: '' }
+                                        }));
+                                    }}
+                                >
+                                    📊 Registrar Resultado
+                                </button>
+                            )}
+
+                            {showForm && result && (
+                                <button
+                                    className="btn-secondary w-full"
+                                    onClick={() => {
+                                        setEditingId(rec.id);
+                                        setFormData(prev => ({
+                                            ...prev,
+                                            [rec.id]: result
+                                        }));
+                                    }}
+                                >
+                                    ✏️ Editar
+                                </button>
+                            )}
+
+                            {!showForm && (
+                                <a
+                                    href="https://brsuperbet.com"
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="btn-superbet block text-center"
+                                >
+                                    🔗 Ir para Superbet
+                                </a>
+                            )}
+                        </div>
+                    </div>
+                );
+            };
+
+            return (
+                <div className="min-h-screen bg-gray-50">
+                    {/* Header */}
+                    <div className="gradient-bg text-white py-8 px-4">
+                        <div className="max-w-7xl mx-auto flex justify-between items-start">
+                            <div>
+                                <h1 className="text-4xl font-bold mb-2">📊 VG_SCORE</h1>
+                                <p className="text-lg opacity-90">Dashboard com Sync em Tempo Real - 15 de Fevereiro 2026</p>
+                            </div>
+                            <div className={`sync-indicator ${isSyncing ? 'loading pulse' : ''}`}>
+                                {isSyncing ? (
+                                    <>
+                                        <span className="pulse">🔄</span>
+                                        <span>Sincronizando...</span>
+                                    </>
+                                ) : (
+                                    <>
+                                        <span>✅</span>
+                                        <span>{lastSync ? `Sync ${lastSync.toLocaleTimeString('pt-BR')}` : 'Pronto'}</span>
+                                    </>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Metrics */}
+                    <div className="max-w-7xl mx-auto px-4 py-8">
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div className="metric-card">
+                                <div className="metric-label">📋 Total de Recomendações</div>
+                                <div className="metric-value">{recommendations.length}</div>
+                                <div className="metric-subtitle">Apostas diversificadas hoje</div>
+                            </div>
+                            <div className="metric-card">
+                                <div className="metric-label">✅ Registradas</div>
+                                <div className="metric-value">{stats.completados}/{stats.total}</div>
+                                <div className="metric-subtitle">Resultados preenchidos</div>
+                            </div>
+                            <div className="metric-card">
+                                <div className="metric-label">🎯 Taxa de Acerto</div>
+                                <div className="metric-value">{taxa_acerto}%</div>
+                                <div className="metric-subtitle">Baseado em registros</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Category Distribution */}
+                    <div className="max-w-7xl mx-auto px-4 py-4">
+                        <div className="bg-white rounded-lg border border-gray-200 p-6">
+                            <h3 className="font-bold text-gray-900 mb-4">📊 Distribuição de Risco & Mercados</h3>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div className="space-y-3">
+                                    <h4 className="font-semibold text-gray-700 mb-3">Risco:</h4>
+                                    <div className="text-center">
+                                        <div className="text-2xl font-bold text-green-600">4</div>
+                                        <div className="text-sm text-gray-600">🚀 Alavancagem (≤1.35)</div>
+                                    </div>
+                                    <div className="text-center">
+                                        <div className="text-2xl font-bold text-blue-600">3</div>
+                                        <div className="text-sm text-gray-600">🟢 Risco Baixo (1.35-1.70)</div>
+                                    </div>
+                                    <div className="text-center">
+                                        <div className="text-2xl font-bold text-orange-600">3</div>
+                                        <div className="text-sm text-gray-600">🟡 Risco Médio (1.70-2.5)</div>
+                                    </div>
+                                </div>
+                                <div className="space-y-3">
+                                    <h4 className="font-semibold text-gray-700 mb-3">Mercados Usados:</h4>
+                                    <div className="flex flex-wrap gap-2">
+                                        <span className="bg-blue-50 text-blue-700 px-3 py-1 rounded text-sm font-semibold">Resultado Final</span>
+                                        <span className="bg-green-50 text-green-700 px-3 py-1 rounded text-sm font-semibold">Ambos Marcam</span>
+                                        <span className="bg-yellow-50 text-yellow-700 px-3 py-1 rounded text-sm font-semibold">Criar Aposta</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Tabs */}
+                    <div className="bg-white border-b border-gray-200 sticky top-0 z-40 mt-6">
+                        <div className="max-w-7xl mx-auto px-4 flex">
+                            <button
+                                className="tab-button"
+                                onClick={() => setActiveTab('recomendacoes')}
+                                style={{
+                                    background: activeTab === 'recomendacoes' ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' : 'none',
+                                    color: activeTab === 'recomendacoes' ? 'white' : '#666',
+                                    borderBottom: activeTab === 'recomendacoes' ? '3px solid #764ba2' : '3px solid transparent'
+                                }}
+                            >
+                                🎯 Recomendações
+                            </button>
+                            <button
+                                className="tab-button"
+                                onClick={() => setActiveTab('resultados')}
+                                style={{
+                                    background: activeTab === 'resultados' ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' : 'none',
+                                    color: activeTab === 'resultados' ? 'white' : '#666',
+                                    borderBottom: activeTab === 'resultados' ? '3px solid #764ba2' : '3px solid transparent'
+                                }}
+                            >
+                                📈 Resultados
+                            </button>
+                            <button
+                                className="tab-button"
+                                onClick={() => setActiveTab('estatisticas')}
+                                style={{
+                                    background: activeTab === 'estatisticas' ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' : 'none',
+                                    color: activeTab === 'estatisticas' ? 'white' : '#666',
+                                    borderBottom: activeTab === 'estatisticas' ? '3px solid #764ba2' : '3px solid transparent'
+                                }}
+                            >
+                                📊 Estatísticas
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* Content */}
+                    <div className="max-w-7xl mx-auto px-4 py-8">
+                        {activeTab === 'recomendacoes' && (
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                {recommendations.map(rec => (
+                                    <RecommendationCard key={rec.id} rec={rec} showForm={false} />
+                                ))}
+                            </div>
+                        )}
+
+                        {activeTab === 'resultados' && (
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                {recommendations.map(rec => (
+                                    <RecommendationCard key={rec.id} rec={rec} showForm={true} />
+                                ))}
+                            </div>
+                        )}
+
+                        {activeTab === 'estatisticas' && (
+                            <div className="space-y-6">
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                    <div className="bg-white p-6 rounded-lg border border-gray-200">
+                                        <div className="text-gray-600 text-sm font-semibold">Apostas Registradas</div>
+                                        <div className="text-3xl font-bold text-gray-900 mt-2">{stats.completados}/{stats.total}</div>
+                                    </div>
+                                    <div className="bg-white p-6 rounded-lg border border-gray-200">
+                                        <div className="text-gray-600 text-sm font-semibold">Acertos</div>
+                                        <div className="text-3xl font-bold text-green-600 mt-2">{stats.acertos}</div>
+                                    </div>
+                                    <div className="bg-white p-6 rounded-lg border border-gray-200">
+                                        <div className="text-gray-600 text-sm font-semibold">Taxa de Acerto</div>
+                                        <div className="text-3xl font-bold text-blue-600 mt-2">{taxa_acerto}%</div>
+                                    </div>
+                                </div>
+
+                                <div className="bg-white rounded-lg border border-gray-200 overflow-x-auto">
+                                    <table className="w-full">
+                                        <thead>
+                                            <tr className="bg-gray-50 border-b border-gray-200">
+                                                <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">Jogo</th>
+                                                <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">Mercado</th>
+                                                <th className="px-6 py-3 text-center text-sm font-semibold text-gray-900">Odd</th>
+                                                <th className="px-6 py-3 text-center text-sm font-semibold text-gray-900">Resultado</th>
+                                                <th className="px-6 py-3 text-center text-sm font-semibold text-gray-900">Lucro</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {recommendations.map(rec => {
+                                                const result = results[rec.id];
+                                                return (
+                                                    <tr key={rec.id} className="border-b border-gray-200 hover:bg-gray-50">
+                                                        <td className="px-6 py-3 text-sm font-medium text-gray-900">{rec.jogo}</td>
+                                                        <td className="px-6 py-3 text-sm text-gray-600">{rec.mercado}</td>
+                                                        <td className="px-6 py-3 text-center text-sm font-semibold text-gray-900">{rec.odds}</td>
+                                                        <td className="px-6 py-3 text-center text-sm">
+                                                            {result ? (
+                                                                <span className={`status-badge status-${result.resultado}`}>
+                                                                    {getStatusColor(result.resultado)}
+                                                                </span>
+                                                            ) : (
+                                                                <span className="text-gray-400">-</span>
+                                                            )}
+                                                        </td>
+                                                        <td className={`px-6 py-3 text-center text-sm font-bold ${result?.resultado === 'win' ? 'text-green-600' : result?.resultado === 'loss' ? 'text-red-600' : 'text-gray-600'}`}>
+                                                            {result ? (result.resultado === 'win' ? '+' : '-') + 'R$ ' + result.lucro : '-'}
+                                                        </td>
+                                                    </tr>
+                                                );
+                                            })}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Footer */}
+                    <div className="bg-gray-900 text-white py-8 mt-12">
+                        <div className="max-w-7xl mx-auto px-4 text-center space-y-2">
+                            <p className="text-gray-400">VG_SCORE © 2026 - Dashboard Profissional com Sync Tempo Real</p>
+                            <p className="text-sm text-gray-500">Hospedado em GitHub Pages + Firebase Realtime Database</p>
+                            <p className="text-sm text-gray-500">Você controla. Você define. Você aposta. Você lucra.</p>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        ReactDOM.createRoot(document.getElementById('root')).render(<VGScoreDashboard />);
+    </script>
+</body>
+</html>
